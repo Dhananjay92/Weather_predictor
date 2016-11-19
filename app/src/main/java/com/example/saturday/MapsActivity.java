@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -44,18 +45,63 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
   @Override
   public void onMapReady (GoogleMap googleMap) {
     mMap = googleMap;
-    if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+    if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+      Utils.getLocationPermission(this);
+    } else
+      onPermissionGraanted();
+  }
+
+
+  @Override
+  public void onRequestPermissionsResult (int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    if (requestCode == 555 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+      onPermissionGraanted();
+    }
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+  }
+
+  private void onPermissionGraanted () {
+    if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
       return;
+    }
     mMap.setMyLocationEnabled(true);
     mMap.setOnMapClickListener(this);
     markerOption = new MarkerOptions();
-    LocationManager locman = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-    Location location = locman.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-    curLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-    mMap.moveCamera(CameraUpdateFactory.newLatLng(curLatLng));
-    if (mMap != null) {
-      mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(curLatLng, 16.0f));
+    getCurrentLocation();
+  }
+
+  private void getCurrentLocation () {
+    if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+      Utils.getLocationPermission(this);
+      return;
     }
+    LocationManager locman = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+    locman.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 10, new android.location.LocationListener() {
+      @Override
+      public void onLocationChanged (Location location) {
+        curLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+        curLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(curLatLng));
+        if (mMap != null) {
+          mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(curLatLng, 16.0f));
+        }
+      }
+
+      @Override
+      public void onStatusChanged (String provider, int status, Bundle extras) {
+
+      }
+
+      @Override
+      public void onProviderEnabled (String provider) {
+
+      }
+
+      @Override
+      public void onProviderDisabled (String provider) {
+
+      }
+    });
   }
 
   private void changeMarkerPosition (LatLng loc) {
@@ -77,11 +123,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
   @Override
   public void onClick (View v) {
     if (v.getId() == R.id.btn_submit) {
+
       Intent intent = new Intent();
-      intent.putExtra("lat", curLatLng.latitude + "");
-      intent.putExtra("lng", curLatLng.longitude + "");
+      if (curLatLng != null) {
+        intent.putExtra("lat", curLatLng.latitude + "");
+        intent.putExtra("lng", curLatLng.longitude + "");
+      }
       setResult(RESULT_OK, intent);
       finish();
+
     }
   }
 
